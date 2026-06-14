@@ -2,143 +2,1266 @@
 <html lang="id">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Jogja After Dark: 3D Haunted City Experience</title>
-  <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css" />
-</head>
-<body>
-  <div id="map"></div>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Jogja After Dark | 3D Haunted City Explorer</title>
+  <style>
+    :root{
+      --bg:#06000d;
+      --panel:rgba(11, 5, 22, .72);
+      --panel-solid:#12071f;
+      --line:rgba(255,255,255,.16);
+      --text:#fff8ff;
+      --muted:#d5c6e8;
+      --pink:#ff2fa3;
+      --purple:#7b32ff;
+      --cyan:#27d8ff;
+      --green:#38f7a3;
+      --yellow:#ffd86b;
+      --red:#ff315d;
+      --shadow:0 18px 55px rgba(0,0,0,.55);
+    }
 
-  <section id="introGate" class="intro-gate">
-    <div class="intro-card">
-      <div class="status-pill">WARNING: horror ambience + jumpscare</div>
-      <h1>JOGJA AFTER DARK</h1>
-      <h2>3D Haunted City Experience</h2>
-      <p>WebGIS 3D urban legend Jogja dengan rute berbasis OSM/fallback, arsip legenda, zona aman-rawan, haunted index, ambience horor, dan game relik yang lebih stabil.</p>
-      <button id="enterBtn" class="primary-btn">Masuk ke Kota Gelap</button>
-      <small>Audio browser baru aktif setelah tombol ini diklik. Untuk demo, gunakan speaker/headset.</small>
+    *{box-sizing:border-box}
+    html,body{
+      width:100%;
+      height:100%;
+      margin:0;
+      overflow:hidden;
+      background:var(--bg);
+      color:var(--text);
+      font-family:Inter, "Segoe UI", Arial, sans-serif;
+    }
+
+    #app{
+      position:fixed;
+      inset:0;
+      background:
+        radial-gradient(circle at 18% 18%,rgba(123,50,255,.18),transparent 34%),
+        radial-gradient(circle at 88% 4%,rgba(255,47,163,.14),transparent 30%),
+        linear-gradient(135deg,#05000b,#0f051b 54%,#06000d);
+    }
+
+    canvas{
+      display:block;
+      width:100%;
+      height:100%;
+      outline:none;
+    }
+
+    .noise,.vignette{
+      position:fixed;
+      inset:0;
+      pointer-events:none;
+      z-index:4;
+    }
+    .noise{
+      opacity:.08;
+      background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.7'/%3E%3C/svg%3E");
+      mix-blend-mode:screen;
+    }
+    .vignette{
+      box-shadow:inset 0 0 190px rgba(0,0,0,.88), inset 0 0 70px rgba(255,47,163,.18);
+    }
+
+    .hud{
+      position:fixed;
+      z-index:10;
+      pointer-events:none;
+    }
+
+    .top-left{
+      left:18px;
+      top:18px;
+      width:340px;
+      border:1px solid var(--line);
+      border-radius:24px;
+      background:linear-gradient(145deg,rgba(18,7,31,.78),rgba(8,2,15,.66));
+      box-shadow:var(--shadow);
+      backdrop-filter:blur(15px);
+      padding:16px;
+    }
+    .eyebrow{
+      color:#ffb5df;
+      font-size:11px;
+      letter-spacing:.8px;
+      font-weight:1000;
+      text-transform:uppercase;
+      margin-bottom:8px;
+    }
+    h1{
+      margin:0;
+      font-size:26px;
+      line-height:1.03;
+      letter-spacing:-1.1px;
+      text-shadow:0 0 18px rgba(255,47,163,.28);
+    }
+    .top-left p{
+      margin:10px 0 0;
+      color:var(--muted);
+      font-size:12.5px;
+      line-height:1.55;
+    }
+    .chips{
+      display:flex;
+      flex-wrap:wrap;
+      gap:6px;
+      margin-top:12px;
+    }
+    .chip{
+      border:1px solid rgba(255,255,255,.13);
+      border-radius:99px;
+      background:rgba(255,255,255,.07);
+      padding:6px 8px;
+      font-size:10.5px;
+      font-weight:900;
+      color:#fff;
+    }
+
+    .top-right{
+      right:18px;
+      top:18px;
+      width:280px;
+      border:1px solid var(--line);
+      border-radius:22px;
+      background:rgba(10,3,18,.72);
+      box-shadow:var(--shadow);
+      backdrop-filter:blur(15px);
+      padding:12px;
+    }
+    .control-title{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:8px;
+      font-size:12px;
+      color:#fff;
+      font-weight:900;
+      margin-bottom:10px;
+    }
+    .status-grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:8px;
+      margin-bottom:10px;
+    }
+    .stat{
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:16px;
+      background:rgba(255,255,255,.06);
+      padding:10px;
+    }
+    .stat b{
+      display:block;
+      color:#ff66bf;
+      font-size:22px;
+      line-height:1;
+    }
+    .stat span{
+      display:block;
+      color:var(--muted);
+      font-size:10.5px;
+      margin-top:6px;
+    }
+    .meter{
+      height:9px;
+      border-radius:999px;
+      background:rgba(255,255,255,.10);
+      overflow:hidden;
+      margin:7px 0 5px;
+    }
+    .meter i{
+      display:block;
+      height:100%;
+      width:0%;
+      background:linear-gradient(90deg,var(--green),var(--yellow),var(--red));
+      border-radius:inherit;
+      transition:.2s;
+    }
+    .tiny{
+      color:var(--muted);
+      font-size:10.5px;
+      line-height:1.35;
+    }
+
+    .bottom-hud{
+      left:50%;
+      bottom:18px;
+      transform:translateX(-50%);
+      width:min(740px,calc(100% - 32px));
+      display:grid;
+      grid-template-columns:1fr auto;
+      gap:10px;
+      align-items:center;
+      pointer-events:none;
+    }
+    .prompt{
+      border:1px solid var(--line);
+      border-radius:18px;
+      background:rgba(9,3,17,.76);
+      box-shadow:var(--shadow);
+      backdrop-filter:blur(14px);
+      padding:12px 14px;
+      color:#fff;
+      font-size:13px;
+      line-height:1.35;
+    }
+    .prompt b{color:#ff84cc}
+    .quick-actions{
+      display:flex;
+      gap:8px;
+      pointer-events:auto;
+    }
+    button{
+      border:1px solid rgba(255,255,255,.16);
+      background:rgba(255,255,255,.09);
+      color:#fff;
+      font-weight:900;
+      border-radius:14px;
+      padding:11px 12px;
+      cursor:pointer;
+      box-shadow:0 10px 25px rgba(0,0,0,.28);
+      transition:.16s;
+      font-size:12px;
+    }
+    button:hover{transform:translateY(-1px);filter:brightness(1.1)}
+    button.primary{background:linear-gradient(135deg,var(--pink),var(--purple));border:0}
+    button.cyan{background:linear-gradient(135deg,#0a8fff,var(--cyan));border:0;color:#06131e}
+    button.green{background:linear-gradient(135deg,#0fbf70,var(--green));border:0;color:#04170d}
+
+    .drawer{
+      position:fixed;
+      z-index:15;
+      right:18px;
+      bottom:92px;
+      width:min(440px,calc(100% - 36px));
+      max-height:calc(100vh - 150px);
+      overflow:auto;
+      border:1px solid var(--line);
+      border-radius:24px;
+      background:linear-gradient(145deg,rgba(20,7,35,.94),rgba(8,2,14,.94));
+      box-shadow:var(--shadow);
+      backdrop-filter:blur(18px);
+      transform:translateX(calc(100% + 34px));
+      transition:.25s ease;
+    }
+    .drawer.open{transform:translateX(0)}
+    .drawer-head{
+      position:sticky;
+      top:0;
+      z-index:1;
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      align-items:center;
+      border-bottom:1px solid var(--line);
+      background:rgba(10,3,18,.94);
+      padding:14px 16px;
+    }
+    .drawer-head b{font-size:14px}
+    .drawer-body{padding:16px}
+    .drawer h2{
+      margin:0 0 8px;
+      font-size:24px;
+      letter-spacing:-.8px;
+    }
+    .drawer p,.drawer li{
+      color:var(--muted);
+      line-height:1.6;
+      font-size:13px;
+    }
+    .drawer dl{margin:12px 0}
+    .drawer dt{
+      margin-top:12px;
+      color:#ff91cf;
+      font-weight:1000;
+      text-transform:uppercase;
+      letter-spacing:.5px;
+      font-size:11px;
+    }
+    .drawer dd{
+      margin:4px 0 0;
+      color:#fff;
+      font-size:13px;
+      line-height:1.45;
+    }
+
+    .table-wrap{
+      overflow-x:auto;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.14);
+      margin:12px 0;
+    }
+    table{
+      width:100%;
+      min-width:520px;
+      border-collapse:collapse;
+      font-size:12px;
+    }
+    th{
+      background:#42107c;
+      color:#fff;
+      padding:10px;
+      text-align:left;
+      border:1px solid rgba(255,255,255,.15);
+    }
+    td{
+      background:#fbf7ff;
+      color:#271b36;
+      padding:10px;
+      border:1px solid rgba(0,0,0,.10);
+      vertical-align:top;
+    }
+    tr:nth-child(even) td{background:#eee7fb}
+
+    .mini-map{
+      position:fixed;
+      z-index:10;
+      left:18px;
+      bottom:92px;
+      width:250px;
+      border:1px solid var(--line);
+      border-radius:22px;
+      background:rgba(9,3,17,.73);
+      box-shadow:var(--shadow);
+      backdrop-filter:blur(14px);
+      padding:12px;
+      pointer-events:none;
+    }
+    .mini-map h3{
+      margin:0 0 8px;
+      font-size:13px;
+      color:#fff;
+    }
+    .mini-canvas{
+      width:100%;
+      height:160px;
+      border-radius:15px;
+      border:1px solid rgba(255,255,255,.12);
+      background:
+        linear-gradient(90deg,rgba(255,255,255,.06) 1px,transparent 1px),
+        linear-gradient(rgba(255,255,255,.06) 1px,transparent 1px),
+        rgba(255,255,255,.04);
+      background-size:24px 24px;
+      position:relative;
+      overflow:hidden;
+    }
+    .mini-point,.mini-car{
+      position:absolute;
+      width:12px;
+      height:12px;
+      border-radius:50%;
+      transform:translate(-50%,-50%);
+      background:var(--pink);
+      box-shadow:0 0 12px var(--pink);
+    }
+    .mini-point span{
+      position:absolute;
+      left:14px;
+      top:-4px;
+      color:#fff;
+      font-size:9px;
+      white-space:nowrap;
+      text-shadow:0 1px 5px #000;
+    }
+    .mini-car{
+      width:14px;height:14px;
+      background:var(--cyan);
+      box-shadow:0 0 14px var(--cyan);
+      z-index:5;
+    }
+
+    .loading{
+      position:fixed;
+      inset:0;
+      z-index:50;
+      display:grid;
+      place-items:center;
+      background:
+        radial-gradient(circle at 28% 22%,rgba(123,50,255,.30),transparent 34%),
+        linear-gradient(135deg,#06000d,#160828);
+    }
+    .start-card{
+      width:min(640px,calc(100% - 34px));
+      border:1px solid var(--line);
+      border-radius:30px;
+      background:rgba(12,4,22,.82);
+      box-shadow:var(--shadow);
+      padding:30px;
+      text-align:center;
+    }
+    .start-card h2{
+      margin:8px 0 8px;
+      font-size:46px;
+      line-height:.95;
+      letter-spacing:-2px;
+    }
+    .start-card p{
+      color:var(--muted);
+      line-height:1.65;
+      margin:0 0 18px;
+    }
+
+    .keys{
+      display:grid;
+      grid-template-columns:repeat(4,1fr);
+      gap:8px;
+      margin:18px 0;
+    }
+    .key{
+      border:1px solid rgba(255,255,255,.14);
+      border-radius:13px;
+      background:rgba(255,255,255,.06);
+      padding:10px;
+      color:var(--muted);
+      font-size:11px;
+    }
+    .key b{display:block;color:#fff;font-size:13px;margin-bottom:4px}
+
+    .toast{
+      position:fixed;
+      z-index:40;
+      top:18px;
+      left:50%;
+      transform:translate(-50%,-140%);
+      border:1px solid var(--line);
+      border-radius:999px;
+      background:rgba(12,4,22,.9);
+      box-shadow:var(--shadow);
+      padding:10px 14px;
+      font-size:12px;
+      transition:.2s;
+    }
+    .toast.show{transform:translate(-50%,0)}
+
+    .mobile-controls{
+      display:none;
+      position:fixed;
+      z-index:12;
+      left:18px;
+      bottom:18px;
+      gap:8px;
+      grid-template-columns:42px 42px 42px;
+      grid-template-rows:42px 42px;
+      pointer-events:auto;
+    }
+    .mobile-controls button{padding:0;border-radius:12px}
+    .up{grid-column:2;grid-row:1}
+    .left{grid-column:1;grid-row:2}
+    .down{grid-column:2;grid-row:2}
+    .right{grid-column:3;grid-row:2}
+
+    @media(max-width:900px){
+      .top-left,.top-right,.mini-map{
+        position:relative;
+        left:auto;right:auto;top:auto;bottom:auto;
+        width:auto;
+        margin:10px;
+      }
+      .top-left{z-index:11}
+      .top-right{z-index:11}
+      .mini-map{display:none}
+      .bottom-hud{
+        bottom:18px;
+        grid-template-columns:1fr;
+      }
+      .quick-actions{justify-content:center;flex-wrap:wrap}
+      .keys{grid-template-columns:1fr 1fr}
+      .mobile-controls{display:grid}
+      .drawer{right:10px;bottom:120px;width:calc(100% - 20px)}
+      .hud{pointer-events:auto}
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app"></div>
+  <div class="noise"></div>
+  <div class="vignette"></div>
+
+  <section class="loading" id="loading">
+    <div class="start-card">
+      <div class="eyebrow">Inspired interactive 3D explorer · not a flat dashboard</div>
+      <h2>Jogja After Dark</h2>
+      <p>
+        Kendalikan kendaraan kecil, jelajahi 5 zona urban legend, dekati portal,
+        tekan <b>E / ENTER</b> untuk membuka story map, dan kumpulkan relik di setiap zona.
+      </p>
+      <div class="keys">
+        <div class="key"><b>W / ↑</b> maju</div>
+        <div class="key"><b>S / ↓</b> mundur</div>
+        <div class="key"><b>A / D</b> belok</div>
+        <div class="key"><b>E / ENTER</b> interaksi</div>
+      </div>
+      <button class="primary" id="startBtn">Masuk ke Kota Gelap</button>
     </div>
   </section>
 
-  <div class="noise"></div>
-  <div class="vignette"></div>
-  <div id="fogLayer" class="fog-layer"></div>
-  <div id="flashLayer" class="flash-layer"></div>
-  <div id="lightning" class="lightning"></div>
-  <div id="torch" class="torch hidden"></div>
-  <div id="bloodText" class="blood-text">JANGAN ASAL KLIK</div>
+  <aside class="hud top-left">
+    <div class="eyebrow">3D Haunted City Experience</div>
+    <h1>Jogja After Dark</h1>
+    <p>
+      Drive-around WebGIS: map diubah menjadi dunia 3D eksploratif. Dekati zona untuk membuka narasi urban legend.
+    </p>
+    <div class="chips">
+      <span class="chip">3D GIS</span>
+      <span class="chip">Urban Legend</span>
+      <span class="chip">Story Map</span>
+      <span class="chip">Survival Mode</span>
+    </div>
+  </aside>
 
-  <div id="jumpscareOverlay" class="jumpscare-overlay hidden" aria-hidden="true">
-    <img id="jumpscareImage" src="assets/img/kunti-webgis.png" alt="jumpscare" />
-    <div id="jumpscareCaption" class="jumpscare-caption">KUNTILANAK</div>
+  <aside class="hud top-right">
+    <div class="control-title">
+      <span>Control Center</span>
+      <span id="fpsLabel">READY</span>
+    </div>
+    <div class="status-grid">
+      <div class="stat"><b id="zoneCount">5</b><span>zona</span></div>
+      <div class="stat"><b id="relicCount">0/5</b><span>relik</span></div>
+      <div class="stat"><b id="dangerValue">0%</b><span>danger</span></div>
+      <div class="stat"><b id="speedValue">0</b><span>speed</span></div>
+    </div>
+    <div class="tiny">Sanity meter</div>
+    <div class="meter"><i id="dangerBar"></i></div>
+    <div class="tiny">Dekati portal zona. Tekan E/ENTER untuk membuka info.</div>
+  </aside>
+
+  <aside class="mini-map">
+    <h3>Mini Map</h3>
+    <div class="mini-canvas" id="miniCanvas"></div>
+  </aside>
+
+  <section class="hud bottom-hud">
+    <div class="prompt" id="prompt">
+      <b>Mode Explore:</b> Gunakan WASD/Arrow untuk mengemudi. Cari portal urban legend.
+    </div>
+    <div class="quick-actions">
+      <button class="cyan" id="btnMap">📍 Zona</button>
+      <button class="green" id="btnOutput">📌 Output</button>
+      <button class="primary" id="btnReset">↻ Respawn</button>
+    </div>
+  </section>
+
+  <aside class="drawer" id="drawer">
+    <div class="drawer-head">
+      <b id="drawerTitle">Info</b>
+      <button id="closeDrawer">Tutup</button>
+    </div>
+    <div class="drawer-body" id="drawerBody"></div>
+  </aside>
+
+  <div class="mobile-controls">
+    <button class="up" data-key="KeyW">▲</button>
+    <button class="left" data-key="KeyA">◀</button>
+    <button class="down" data-key="KeyS">▼</button>
+    <button class="right" data-key="KeyD">▶</button>
   </div>
 
-  <aside id="heroPanel" class="panel hero-panel draggable">
-    <div class="drag-handle">☰ Jogja After Dark</div>
-    <h1>3D Haunted City Experience</h1>
-    <p>WebGIS interaktif: urban legend, analisis spasial, zona aman-rawan, rute OSM/fallback, dan visualisasi 3D.</p>
-    <div class="chips"><span>3D GIS</span><span>Urban Legend</span><span>Risk Zone</span><span>Storytelling</span></div>
-  </aside>
+  <div class="toast" id="toast">Portal ditemukan</div>
 
-  <aside id="legendPanel" class="panel legend-panel draggable">
-    <div class="drag-handle">☰ Arsip Urban Legend</div>
-    <input id="searchInput" placeholder="Cari ikon: Tamansari, Keraton, Tugu..." />
-    <div id="legendItems"></div>
-  </aside>
+  <script type="module">
+    import * as THREE from "https://unpkg.com/three@0.165.0/build/three.module.js";
 
-  <aside id="controlPanel" class="panel control-panel draggable">
-    <div class="drag-handle">☰ Control Center</div>
+    const zones = [
+      {
+        zona:"Zona 1",
+        lokasi:"Keraton Ngayogyakarta Hadiningrat",
+        tema:"Misteri Tata Letak Kosmis",
+        pos:[0,0,0],
+        color:0xff2fa3,
+        icon:"🏯",
+        index:86,
+        stories:[
+          "Jalur kosmik Keraton sebagai pusat keseimbangan simbolik Yogyakarta.",
+          "Tejo Bathang sebagai fenomena cahaya vertikal yang dikaitkan dengan wafatnya tokoh bangsawan.",
+          "Lampor atau rombongan kereta kencana gaib yang dipercaya melintas melalui area sekitar Keraton.",
+          "Abdi dalem gaib, hantu panggung, dan narasi Alun-Alun Kidul dengan mitos beringin kembar."
+        ],
+        fungsi:"Node utama rute horor dan pusat narasi budaya-historis."
+      },
+      {
+        zona:"Zona 2",
+        lokasi:"Taman Sari (Water Castle)",
+        tema:"Terowongan & Ruang Tersembunyi",
+        pos:[-34,0,24],
+        color:0x7b32ff,
+        icon:"🏛️",
+        index:82,
+        stories:[
+          "Terowongan Rahasia Taman Sari dikaitkan dengan jalur tersembunyi kerajaan.",
+          "Sumur Gumuling dikenal sebagai ruang bawah tanah dengan suasana spiritual.",
+          "Umbul Binangun dikaitkan dengan aura spiritual dan bayangan perempuan berpakaian tradisional."
+        ],
+        fungsi:"Zona eksplorasi lorong, ambience bawah tanah, dan visual kabut."
+      },
+      {
+        zona:"Zona 3",
+        lokasi:"Kota Gede (Makam Raja)",
+        tema:"Legenda Kerajaan Mataram",
+        pos:[58,0,54],
+        color:0xff315d,
+        icon:"🪦",
+        index:88,
+        stories:[
+          "Sosok abdi dalem sepuh gaib yang menjaga gerbang dan lorong makam.",
+          "Teror pocong penjaga rumah tua di kawasan Kotagede.",
+          "Prajurit Mataram tanpa kepala yang dipercaya berpatroli di pelataran makam.",
+          "Monyet putih gaib dan siluman ular bermahkota sebagai penjaga kawasan keramat."
+        ],
+        fungsi:"Zona risiko tinggi untuk efek visual, relic game, dan puncak rute."
+      },
+      {
+        zona:"Zona 4",
+        lokasi:"Jalan Malioboro – Alun-Alun",
+        tema:"Cerita Urban & Mitos Beringin",
+        pos:[-8,0,-46],
+        color:0x28d8ff,
+        icon:"🌃",
+        index:72,
+        stories:[
+          "Toko tua Malioboro dengan sosok Ndoro Putri/Bu Tejo.",
+          "Gang bunga misterius Malioboro sebagai contoh salah paham urban legend.",
+          "Alun-Alun dan mitos beringin kembar sebagai ruang transisi urban-mistis."
+        ],
+        fungsi:"Zona pembuka rute dan titik urban paling mudah dikenali pengguna."
+      },
+      {
+        zona:"Zona 5",
+        lokasi:"Gua Selarong & Bukit Sekitar",
+        tema:"Legenda Perlawanan Diponegoro",
+        pos:[-70,0,62],
+        color:0x38f7a3,
+        icon:"⛰️",
+        index:78,
+        stories:[
+          "Makam Kiai Secang dipercaya sebagai area sakral yang dijaga makhluk halus.",
+          "Bukit Selarong dikaitkan dengan sosok berjubah putih, suara gamelan gaib, dan kesurupan.",
+          "Narasi Selarong menghubungkan unsur sejarah Diponegoro dengan urban storytelling."
+        ],
+        fungsi:"Zona penutup rute untuk memperkuat sejarah, petilasan, dan dokumentasi lapangan."
+      }
+    ];
 
-    <div class="scenario-box">
-      <span>SKENARIO AKTIF</span>
-      <h2 id="scenarioTitle">Mode Jelajah Horor</h2>
-      <p id="scenarioText">Klik lokasi urban legend, ikuti rute, dan jangan terlalu sering asal klik.</p>
-    </div>
+    const outputs = [
+      ["WebGIS 3D Interaktif","Menjelajahi kota Yogyakarta malam hari, melihat rute horor, landmark, dan zona aman/rawan.","Browser-based WebGIS"],
+      ["Model 3D Kota","Visualisasi bangunan, landmark, dan rute wisata horor dalam bentuk 3D.","Three.js / GLTF / Babylon.js"],
+      ["Story Map / Narasi Urban Legend","Cerita dan sejarah tiap lokasi urban legend.","Pop-up, tooltip, atau panel interaktif di WebGIS"],
+      ["Mini Game / Survival Mode","Pengguna menyelesaikan rute, mengumpulkan relik, dan menghindari zona rawan.","Web-based 3D survival map"],
+      ["Infografis & Video","Dokumentasi rute, skor haunted index, dan visual menarik untuk promosi.","PDF, GIF"],
+      ["Laporan & Tutorial","Dokumentasi workflow GIS, WebGIS, dan analisis spasial.","PDF / docx / tutorial step-by-step"]
+    ];
 
-    <div class="metric-grid">
-      <div class="metric"><b id="mLegend">10</b><span>ikon</span></div>
-      <div class="metric"><b id="mRoute">OSM</b><span>rute</span></div>
-      <div class="metric"><b id="mRelic">0/5</b><span>relik</span></div>
-      <div class="metric"><b id="mSanity">100</b><span>sanity</span></div>
-    </div>
+    const app = document.getElementById("app");
+    const promptEl = document.getElementById("prompt");
+    const drawer = document.getElementById("drawer");
+    const drawerTitle = document.getElementById("drawerTitle");
+    const drawerBody = document.getElementById("drawerBody");
+    const toast = document.getElementById("toast");
+    const dangerBar = document.getElementById("dangerBar");
+    const dangerValue = document.getElementById("dangerValue");
+    const speedValue = document.getElementById("speedValue");
+    const relicCount = document.getElementById("relicCount");
+    const miniCanvas = document.getElementById("miniCanvas");
 
-    <div class="danger-wrap">
-      <div class="danger-head"><b>Danger Meter</b><span id="dangerText">0%</span></div>
-      <div class="danger-bar"><div id="dangerFill"></div></div>
-      <small>Naik saat game aktif, klik kosong berulang, masuk zona merah, atau terkena jebakan.</small>
-    </div>
+    let scene, camera, renderer;
+    let car, carBody;
+    let velocity = 0;
+    let heading = 0;
+    let danger = 0;
+    let activeZone = null;
+    let collected = new Set();
+    let clock = new THREE.Clock();
+    let keys = {};
+    let started = false;
+    let cameraYaw = 0;
+    let mouseDown = false;
+    let lastMouseX = 0;
 
-    <h3>Layer</h3>
-    <label><input type="checkbox" id="layerBuildings" checked /> Bangunan 3D + Landmark</label>
-    <label><input type="checkbox" id="layerHaunted" checked /> Ikon Urban Legend</label>
-    <label><input type="checkbox" id="layerRisk" checked /> Zona Rawan Horor</label>
-    <label><input type="checkbox" id="layerSafe" checked /> Zona Aman</label>
-    <label><input type="checkbox" id="layerRoutes" checked /> Rute OSM/Fallback</label>
-    <label><input type="checkbox" id="layerFacilities" checked /> Fasilitas Darurat</label>
+    const zoneMeshes = [];
+    const portalMeshes = [];
+    const ghosts = [];
 
-    <h3>Filter Haunted Index</h3>
-    <input id="hauntedSlider" type="range" min="0" max="100" value="0" />
-    <small id="sliderText">Tampilkan skor ≥ 0</small>
+    initMiniMap();
+    initThree();
+    animate();
 
-    <h3>Mode Interaktif</h3>
-    <button id="kliwonBtn" class="danger-btn">🌑 Aktifkan Malam Jumat</button>
-    <button id="ghostHuntBtn" class="purple-btn">🔦 Ghost Hunt Mode</button>
-    <button id="miniGameBtn" class="green-btn">🎮 Mulai Mini Game Relik</button>
-    <button id="view3dBtn" class="blue-btn">🏙️ Mode 3D Dekat</button>
-    <button id="osmRouteBtn" class="blue-btn">🛣️ Reload Rute OSM</button>
+    document.getElementById("startBtn").addEventListener("click", () => {
+      started = true;
+      document.getElementById("loading").style.display = "none";
+      toastMsg("Masuk ke kota gelap. Cari portal urban legend.");
+    });
 
-    <h3>Soundtrack</h3>
-    <div class="audio-grid">
-      <button data-track="ambience" class="audio-btn">🌫️ Ambience</button>
-      <button data-track="wind" class="audio-btn">💨 Angin</button>
-      <button data-track="radio" class="audio-btn">📻 Radio</button>
-      <button data-track="heartbeat" class="audio-btn">🫀 Heartbeat</button>
-      <button id="stopTrackBtn" class="dark-btn full">⏹ Stop Soundtrack</button>
-    </div>
+    document.getElementById("closeDrawer").addEventListener("click", closeDrawer);
+    document.getElementById("btnReset").addEventListener("click", respawn);
+    document.getElementById("btnMap").addEventListener("click", openZoneList);
+    document.getElementById("btnOutput").addEventListener("click", openOutput);
+    window.addEventListener("resize", onResize);
 
-    <details class="test-box">
-      <summary>Test efek opsional</summary>
-      <button data-creature="kunti" class="test-scare">👻 Test Kunti</button>
-      <button data-creature="pocong" class="test-scare">🧟 Test Pocong</button>
-      <button data-creature="genderuwo" class="test-scare">👹 Test Genderuwo</button>
-    </details>
+    window.addEventListener("keydown", e => {
+      keys[e.code] = true;
+      if(e.code === "Enter" || e.code === "KeyE") interact();
+      if(e.code === "KeyM") openZoneList();
+      if(e.code === "KeyR") respawn();
+      if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Space"].includes(e.code)) e.preventDefault();
+    });
+    window.addEventListener("keyup", e => keys[e.code] = false);
 
-    <h3>Kontrol Aman</h3>
-    <button id="muteBtn" class="dark-btn">🔊 Mute / Unmute</button>
-    <button id="panicBtn" class="dark-btn">🧯 Matikan Semua Efek</button>
-    <button id="resetBtn" class="dark-btn">↻ Reset Kamera</button>
-  </aside>
+    renderer.domElement.addEventListener("pointerdown", e => {
+      mouseDown = true;
+      lastMouseX = e.clientX;
+    });
+    window.addEventListener("pointerup", () => mouseDown = false);
+    window.addEventListener("pointermove", e => {
+      if(!mouseDown) return;
+      const dx = e.clientX - lastMouseX;
+      lastMouseX = e.clientX;
+      cameraYaw += dx * 0.004;
+    });
 
-  <aside id="infoPanel" class="panel info-panel draggable">
-    <div class="drag-handle">☰ Info Lokasi</div>
-    <div id="infoContent">
-      <h2>Belum ada lokasi dipilih</h2>
-      <p>Klik ikon urban legend. Setiap lokasi punya cerita, analisis spasial, efek audio, dan potensi momen kritis yang bisa memicu jumpscare.</p>
-    </div>
-  </aside>
+    document.querySelectorAll(".mobile-controls button").forEach(btn => {
+      const code = btn.dataset.key;
+      btn.addEventListener("pointerdown", e => { e.preventDefault(); keys[code] = true; });
+      btn.addEventListener("pointerup", e => { e.preventDefault(); keys[code] = false; });
+      btn.addEventListener("pointerleave", () => keys[code] = false);
+    });
 
-  <div id="gamePanel" class="game-panel hidden">
-    <b>🎮 MINI GAME: RELIK KUTUKAN</b>
-    <p>Cari 5 relik emas. Cari 5 relik emas. Jumpscare hanya muncul saat momen kritis: danger penuh atau jebakan fase akhir.</p>
-    <div class="progress"><div id="gameProgress"></div></div>
-    <span id="gameStatus">Relik: 0/5</span>
-  </div>
+    function initThree(){
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x07000d);
+      scene.fog = new THREE.FogExp2(0x12051f, 0.017);
 
-  <div class="map-legend">
-    <div><span class="dot high"></span>Zona rawan</div>
-    <div><span class="dot safe"></span>Zona aman</div>
-    <div><span class="line route"></span>Rute OSM</div>
-    <div>🏙️ Landmark 3D / kolom hantu</div>
-    <div>👻 Urban legend</div>
-    <div>📿 Relik / 👁️ Jebakan</div>
-  </div>
+      camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, .1, 600);
+      camera.position.set(0, 12, 26);
 
-  <div id="toast" class="toast">Klik “Masuk ke Kota Gelap” dulu.</div>
+      renderer = new THREE.WebGLRenderer({antialias:true, alpha:false});
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      app.appendChild(renderer.domElement);
 
-  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-  <script src="data/points.js"></script>
-  <script src="data/layers.js"></script>
-  <script src="js/app.js"></script>
+      const ambient = new THREE.HemisphereLight(0x7655ff, 0x09010d, 1.35);
+      scene.add(ambient);
+
+      const moon = new THREE.DirectionalLight(0xe5d9ff, 2.2);
+      moon.position.set(-30, 70, -35);
+      moon.castShadow = true;
+      moon.shadow.mapSize.set(2048,2048);
+      moon.shadow.camera.near = 1;
+      moon.shadow.camera.far = 160;
+      moon.shadow.camera.left = -90;
+      moon.shadow.camera.right = 90;
+      moon.shadow.camera.top = 90;
+      moon.shadow.camera.bottom = -90;
+      scene.add(moon);
+
+      const ground = new THREE.Mesh(
+        new THREE.PlaneGeometry(260, 220, 40, 40),
+        new THREE.MeshStandardMaterial({color:0x10091a, roughness:.82, metalness:.05})
+      );
+      ground.rotation.x = -Math.PI/2;
+      ground.receiveShadow = true;
+      scene.add(ground);
+
+      addGrid();
+      addRoads();
+      addCityBlocks();
+      addZones();
+      addCar();
+      addGhosts();
+      addMoon();
+      respawn();
+    }
+
+    function addGrid(){
+      const grid = new THREE.GridHelper(260, 52, 0x7b32ff, 0x2a143e);
+      grid.material.opacity = .28;
+      grid.material.transparent = true;
+      scene.add(grid);
+    }
+
+    function addRoads(){
+      const pts = [
+        new THREE.Vector3(zones[3].pos[0],.05,zones[3].pos[2]),
+        new THREE.Vector3(zones[0].pos[0],.05,zones[0].pos[2]),
+        new THREE.Vector3(zones[1].pos[0],.05,zones[1].pos[2]),
+        new THREE.Vector3(zones[2].pos[0],.05,zones[2].pos[2]),
+        new THREE.Vector3(zones[4].pos[0],.05,zones[4].pos[2])
+      ];
+      const mat = new THREE.LineBasicMaterial({color:0xff2fa3, transparent:true, opacity:.95});
+      const geo = new THREE.BufferGeometry().setFromPoints(pts);
+      const line = new THREE.Line(geo, mat);
+      scene.add(line);
+
+      pts.forEach((p,i) => {
+        if(i === pts.length-1) return;
+        const a = p, b = pts[i+1];
+        const mid = new THREE.Vector3().addVectors(a,b).multiplyScalar(.5);
+        const len = a.distanceTo(b);
+        const road = new THREE.Mesh(
+          new THREE.BoxGeometry(3.2, .04, len),
+          new THREE.MeshStandardMaterial({color:0x1b102a, roughness:.9})
+        );
+        road.position.copy(mid);
+        road.lookAt(b);
+        road.position.y = .025;
+        road.receiveShadow = true;
+        scene.add(road);
+      });
+    }
+
+    function addCityBlocks(){
+      const rng = mulberry32(27);
+      for(let i=0;i<150;i++){
+        const x = (rng()-.5) * 210;
+        const z = (rng()-.5) * 170;
+        if(Math.abs(x) < 10 && Math.abs(z) < 10) continue;
+        const nearest = Math.min(...zones.map(zone => Math.hypot(x-zone.pos[0], z-zone.pos[2])));
+        if(nearest < 8) continue;
+        const h = 1 + rng()*7;
+        const w = 2 + rng()*5;
+        const d = 2 + rng()*5;
+        const color = rng() > .56 ? 0x3d1c67 : (rng() > .5 ? 0x531233 : 0x17315a);
+        const mesh = new THREE.Mesh(
+          new THREE.BoxGeometry(w,h,d),
+          new THREE.MeshStandardMaterial({color, roughness:.74, metalness:.08})
+        );
+        mesh.position.set(x,h/2,z);
+        mesh.rotation.y = Math.round(rng()*4) * Math.PI/2;
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        scene.add(mesh);
+      }
+    }
+
+    function addZones(){
+      zones.forEach((z,idx) => {
+        const [x,y,zz] = z.pos;
+
+        const tower = new THREE.Mesh(
+          new THREE.CylinderGeometry(3.2, 4.5, 5 + z.index/9, 16),
+          new THREE.MeshStandardMaterial({color:z.color, emissive:z.color, emissiveIntensity:.18, roughness:.36})
+        );
+        tower.position.set(x, (5 + z.index/9)/2, zz);
+        tower.castShadow = true;
+        tower.userData.zoneIndex = idx;
+        scene.add(tower);
+        zoneMeshes.push(tower);
+
+        const ring = new THREE.Mesh(
+          new THREE.TorusGeometry(8, .18, 8, 72),
+          new THREE.MeshBasicMaterial({color:z.color, transparent:true, opacity:.85})
+        );
+        ring.rotation.x = Math.PI/2;
+        ring.position.set(x,.28,zz);
+        ring.userData.zoneIndex = idx;
+        scene.add(ring);
+        portalMeshes.push(ring);
+
+        const light = new THREE.PointLight(z.color, 2.2, 28, 2);
+        light.position.set(x,7,zz);
+        scene.add(light);
+
+        const relic = makeRelic(z.color);
+        relic.position.set(x + 5.7, 1.8, zz - 5.7);
+        relic.userData.zoneIndex = idx;
+        scene.add(relic);
+        z.relicMesh = relic;
+
+        const label = makeTextSprite(`${z.icon} ${z.zona}`);
+        label.position.set(x, 11 + z.index/9, zz);
+        scene.add(label);
+      });
+    }
+
+    function makeRelic(color){
+      const group = new THREE.Group();
+      const gem = new THREE.Mesh(
+        new THREE.OctahedronGeometry(1.15,0),
+        new THREE.MeshStandardMaterial({color, emissive:color, emissiveIntensity:.45, roughness:.2, metalness:.3})
+      );
+      gem.castShadow = true;
+      group.add(gem);
+      const ring = new THREE.Mesh(
+        new THREE.TorusGeometry(1.65,.07,8,36),
+        new THREE.MeshBasicMaterial({color:0xffd86b})
+      );
+      ring.rotation.x = Math.PI/2;
+      group.add(ring);
+      group.userData.isRelic = true;
+      return group;
+    }
+
+    function addCar(){
+      car = new THREE.Group();
+      car.position.set(-8,0,-62);
+
+      carBody = new THREE.Mesh(
+        new THREE.BoxGeometry(3.8,1.15,5.4),
+        new THREE.MeshStandardMaterial({color:0xff2fa3, roughness:.35, metalness:.25})
+      );
+      carBody.position.y = 1.05;
+      carBody.castShadow = true;
+      car.add(carBody);
+
+      const cabin = new THREE.Mesh(
+        new THREE.BoxGeometry(2.5,1.15,2.35),
+        new THREE.MeshStandardMaterial({color:0x240b36, roughness:.28, metalness:.25})
+      );
+      cabin.position.set(0,1.92,.1);
+      cabin.castShadow = true;
+      car.add(cabin);
+
+      const wheelMat = new THREE.MeshStandardMaterial({color:0x09090d, roughness:.5});
+      [[-2,.45,-1.9],[2,.45,-1.9],[-2,.45,1.9],[2,.45,1.9]].forEach(p=>{
+        const wheel = new THREE.Mesh(new THREE.CylinderGeometry(.48,.48,.45,16), wheelMat);
+        wheel.rotation.z = Math.PI/2;
+        wheel.position.set(...p);
+        wheel.castShadow = true;
+        car.add(wheel);
+      });
+
+      const headMat = new THREE.MeshBasicMaterial({color:0x28d8ff});
+      const left = new THREE.Mesh(new THREE.SphereGeometry(.18,12,12), headMat);
+      left.position.set(-.95,1.12,-2.82);
+      const right = left.clone();
+      right.position.x = .95;
+      car.add(left,right);
+
+      const light1 = new THREE.SpotLight(0x28d8ff, 5, 28, .48, .55, 1.2);
+      light1.position.set(-.8,1.4,-2.7);
+      light1.target.position.set(-.8,.2,-12);
+      car.add(light1, light1.target);
+
+      const light2 = light1.clone();
+      light2.position.set(.8,1.4,-2.7);
+      light2.target.position.set(.8,.2,-12);
+      car.add(light2, light2.target);
+
+      scene.add(car);
+    }
+
+    function addGhosts(){
+      const ghostMat = new THREE.MeshStandardMaterial({color:0xffffff, emissive:0x8844ff, emissiveIntensity:.35, transparent:true, opacity:.55});
+      for(let i=0;i<7;i++){
+        const g = new THREE.Group();
+        const body = new THREE.Mesh(new THREE.SphereGeometry(1.2,16,16), ghostMat);
+        body.scale.y = 1.6;
+        body.castShadow = true;
+        g.add(body);
+        g.position.set((Math.random()-.5)*120, 2.4, (Math.random()-.5)*100);
+        g.userData.phase = Math.random()*Math.PI*2;
+        g.userData.speed = .3 + Math.random()*.7;
+        scene.add(g);
+        ghosts.push(g);
+      }
+    }
+
+    function addMoon(){
+      const moon = new THREE.Mesh(
+        new THREE.SphereGeometry(7,32,32),
+        new THREE.MeshBasicMaterial({color:0xf1e6ff})
+      );
+      moon.position.set(-70,62,-90);
+      scene.add(moon);
+    }
+
+    function makeTextSprite(text){
+      const canvas = document.createElement("canvas");
+      canvas.width = 512;
+      canvas.height = 128;
+      const ctx = canvas.getContext("2d");
+      ctx.clearRect(0,0,512,128);
+      ctx.fillStyle = "rgba(10,3,18,.72)";
+      roundRect(ctx, 18, 28, 476, 72, 24);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,.28)";
+      ctx.stroke();
+      ctx.font = "bold 36px Segoe UI, Arial";
+      ctx.fillStyle = "#ffffff";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(text,256,64);
+      const tex = new THREE.CanvasTexture(canvas);
+      const sprite = new THREE.Sprite(new THREE.SpriteMaterial({map:tex, transparent:true}));
+      sprite.scale.set(12,3,1);
+      return sprite;
+    }
+
+    function roundRect(ctx, x, y, w, h, r){
+      ctx.beginPath();
+      ctx.moveTo(x+r,y);
+      ctx.arcTo(x+w,y,x+w,y+h,r);
+      ctx.arcTo(x+w,y+h,x,y+h,r);
+      ctx.arcTo(x,y+h,x,y,r);
+      ctx.arcTo(x,y,x+w,y,r);
+      ctx.closePath();
+    }
+
+    function animate(){
+      requestAnimationFrame(animate);
+      const dt = Math.min(clock.getDelta(), .05);
+      update(dt);
+      renderer.render(scene,camera);
+    }
+
+    function update(dt){
+      if(started){
+        const forward = keys.KeyW || keys.ArrowUp;
+        const back = keys.KeyS || keys.ArrowDown;
+        const left = keys.KeyA || keys.ArrowLeft;
+        const right = keys.KeyD || keys.ArrowRight;
+        const boost = keys.ShiftLeft || keys.ShiftRight;
+        const accel = boost ? 24 : 16;
+
+        if(forward) velocity += accel * dt;
+        if(back) velocity -= accel * .72 * dt;
+        velocity *= Math.pow(.90, dt*10);
+        velocity = THREE.MathUtils.clamp(velocity, -9, boost ? 22 : 14);
+
+        const turnPower = THREE.MathUtils.clamp(Math.abs(velocity)/8, .25, 1.35);
+        if(left) heading += 2.4 * turnPower * dt * Math.sign(velocity || 1);
+        if(right) heading -= 2.4 * turnPower * dt * Math.sign(velocity || 1);
+
+        car.rotation.y = heading;
+        car.position.x += Math.sin(heading) * velocity * dt;
+        car.position.z += Math.cos(heading) * velocity * dt * -1;
+        car.position.x = THREE.MathUtils.clamp(car.position.x, -118, 118);
+        car.position.z = THREE.MathUtils.clamp(car.position.z, -98, 98);
+
+        carBody.rotation.z = THREE.MathUtils.lerp(carBody.rotation.z, (right-left) * .08, .08);
+        carBody.rotation.x = THREE.MathUtils.lerp(carBody.rotation.x, velocity * .006, .08);
+      }
+
+      portalMeshes.forEach((m,i)=>{
+        m.rotation.z += dt * (0.8 + i*.12);
+        m.position.y = .34 + Math.sin(performance.now()*.0015+i) * .08;
+      });
+
+      zones.forEach((z,i)=>{
+        if(z.relicMesh && z.relicMesh.visible){
+          z.relicMesh.rotation.y += dt * 1.8;
+          z.relicMesh.position.y = 1.8 + Math.sin(performance.now()*.002+i) * .35;
+        }
+      });
+
+      ghosts.forEach((g,i)=>{
+        const t = performance.now()*.001*g.userData.speed + g.userData.phase;
+        g.position.y = 2.2 + Math.sin(t*2)*.6;
+        g.position.x += Math.sin(t+i) * dt * .8;
+        g.position.z += Math.cos(t*.7+i) * dt * .8;
+        g.rotation.y += dt * .6;
+      });
+
+      updateCamera(dt);
+      updateInteraction();
+      updateMiniMap();
+      speedValue.textContent = Math.round(Math.abs(velocity)*8);
+      document.getElementById("fpsLabel").textContent = started ? "LIVE" : "READY";
+    }
+
+    function updateCamera(dt){
+      const dist = 20;
+      const height = 11;
+      const yaw = heading + cameraYaw;
+      const target = new THREE.Vector3(car.position.x, car.position.y + 2.2, car.position.z);
+      const camPos = new THREE.Vector3(
+        car.position.x - Math.sin(yaw) * dist,
+        car.position.y + height,
+        car.position.z + Math.cos(yaw) * dist
+      );
+      camera.position.lerp(camPos, 1 - Math.pow(.001, dt));
+      camera.lookAt(target);
+    }
+
+    function updateInteraction(){
+      let nearest = null;
+      let minDist = Infinity;
+
+      zones.forEach((z,i)=>{
+        const d = Math.hypot(car.position.x - z.pos[0], car.position.z - z.pos[2]);
+        if(d < minDist){
+          minDist = d;
+          nearest = {z,i,d};
+        }
+      });
+
+      activeZone = minDist < 10 ? nearest : null;
+
+      if(activeZone){
+        promptEl.innerHTML = `<b>${activeZone.z.zona} ditemukan:</b> ${activeZone.z.lokasi}. Tekan <b>E / ENTER</b> untuk story map.`;
+        if(activeZone.z.index > 82) addDanger(.03);
+      } else {
+        promptEl.innerHTML = `<b>Mode Explore:</b> Gunakan WASD/Arrow. Cari portal urban legend. Tekan <b>M</b> untuk daftar zona.`;
+        addDanger(-.01);
+      }
+
+      zones.forEach((z,i)=>{
+        const dist = Math.hypot(car.position.x - z.pos[0], car.position.z - z.pos[2]);
+        if(z.relicMesh && z.relicMesh.visible && dist < 6){
+          collectRelic(i);
+        }
+      });
+    }
+
+    function interact(){
+      if(!started) return;
+      if(activeZone) openZone(activeZone.i);
+      else openZoneList();
+    }
+
+    function collectRelic(i){
+      if(collected.has(i)) return;
+      collected.add(i);
+      zones[i].relicMesh.visible = false;
+      relicCount.textContent = `${collected.size}/5`;
+      toastMsg(`Relik ${zones[i].zona} terkumpul.`);
+      addDanger(6);
+      if(collected.size === zones.length){
+        toastMsg("Semua relik terkumpul. Survival route selesai.");
+        promptEl.innerHTML = `<b>Rute selesai:</b> 5 relik terkumpul. Buka panel Output untuk bahan presentasi.`;
+      }
+    }
+
+    function addDanger(amount){
+      danger = THREE.MathUtils.clamp(danger + amount, 0, 100);
+      dangerBar.style.width = `${danger}%`;
+      dangerValue.textContent = `${Math.round(danger)}%`;
+    }
+
+    function openZone(i){
+      const z = zones[i];
+      drawerTitle.textContent = `${z.icon} ${z.zona}`;
+      drawerBody.innerHTML = `
+        <h2>${z.lokasi}</h2>
+        <p><b>${z.tema}</b></p>
+        <dl>
+          <dt>Haunted Index</dt><dd>${z.index}/100</dd>
+          <dt>Fungsi WebGIS</dt><dd>${z.fungsi}</dd>
+        </dl>
+        <h3>Narasi Urban Legend</h3>
+        <ul>${z.stories.map(s=>`<li>${s}</li>`).join("")}</ul>
+        <button class="primary" id="focusZoneBtn">Respawn ke zona ini</button>
+      `;
+      drawer.classList.add("open");
+      document.getElementById("focusZoneBtn").addEventListener("click", () => {
+        car.position.set(z.pos[0]+8,0,z.pos[2]+12);
+        heading = Math.atan2(8,12);
+        velocity = 0;
+        closeDrawer();
+      });
+    }
+
+    function openZoneList(){
+      drawerTitle.textContent = "Lokasi Studi dan Data";
+      drawerBody.innerHTML = `
+        <p>5 zona utama sesuai tabel lokasi studi. Klik tombol untuk teleport ke zona.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Zona</th><th>Lokasi</th><th>Legenda / Tema</th></tr></thead>
+            <tbody>
+              ${zones.map((z,i)=>`
+                <tr>
+                  <td><b>${z.zona}</b></td>
+                  <td>${z.lokasi}<br><button class="cyan go-zone" data-i="${i}">Teleport</button></td>
+                  <td>${z.tema}</td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        </div>
+      `;
+      drawer.classList.add("open");
+      drawerBody.querySelectorAll(".go-zone").forEach(btn=>{
+        btn.addEventListener("click", () => {
+          const z = zones[Number(btn.dataset.i)];
+          car.position.set(z.pos[0]+8,0,z.pos[2]+12);
+          velocity = 0;
+          closeDrawer();
+        });
+      });
+    }
+
+    function openOutput(){
+      drawerTitle.textContent = "Target Hasil Akhir";
+      drawerBody.innerHTML = `
+        <p>Output yang diharapkan sudah diwakili dalam web 3D ini.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Output</th><th>Deskripsi / Fungsi</th><th>Format / Media</th></tr></thead>
+            <tbody>
+              ${outputs.map(o=>`<tr><td><b>${o[0]}</b></td><td>${o[1]}</td><td>${o[2]}</td></tr>`).join("")}
+            </tbody>
+          </table>
+        </div>
+        <h3>Catatan presentasi</h3>
+        <ul>
+          <li>WebGIS 3D: dunia eksplorasi berbasis zona.</li>
+          <li>Story Map: panel cerita muncul saat pengguna berinteraksi dengan portal.</li>
+          <li>Survival Mode: relik dikumpulkan dari tiap zona.</li>
+          <li>Laporan: workflow dapat dijelaskan dari data, visualisasi, rute, dan evaluasi UI.</li>
+        </ul>
+      `;
+      drawer.classList.add("open");
+    }
+
+    function closeDrawer(){
+      drawer.classList.remove("open");
+    }
+
+    function respawn(){
+      car.position.set(-8,0,-62);
+      heading = 0;
+      velocity = 0;
+      addDanger(-100);
+      toastMsg("Respawn ke Malioboro route start.");
+    }
+
+    function onResize(){
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    function toastMsg(msg){
+      toast.textContent = msg;
+      toast.classList.add("show");
+      clearTimeout(toast._timer);
+      toast._timer = setTimeout(()=>toast.classList.remove("show"),2400);
+    }
+
+    function initMiniMap(){
+      zones.forEach((z,i)=>{
+        const p = document.createElement("div");
+        p.className = "mini-point";
+        p.style.left = `${mapX(z.pos[0])}%`;
+        p.style.top = `${mapZ(z.pos[2])}%`;
+        p.innerHTML = `<span>${i+1}</span>`;
+        miniCanvas.appendChild(p);
+      });
+      const c = document.createElement("div");
+      c.className = "mini-car";
+      c.id = "miniCar";
+      miniCanvas.appendChild(c);
+    }
+
+    function updateMiniMap(){
+      const c = document.getElementById("miniCar");
+      c.style.left = `${mapX(car.position.x)}%`;
+      c.style.top = `${mapZ(car.position.z)}%`;
+    }
+
+    function mapX(x){ return THREE.MathUtils.clamp(((x + 120)/240)*100, 3, 97); }
+    function mapZ(z){ return THREE.MathUtils.clamp(((z + 100)/200)*100, 3, 97); }
+
+    function mulberry32(a){
+      return function(){
+        let t = a += 0x6D2B79F5;
+        t = Math.imul(t ^ t >>> 15, t | 1);
+        t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+      }
+    }
+  </script>
 </body>
 </html>
